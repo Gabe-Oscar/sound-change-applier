@@ -20,11 +20,11 @@ class Sound(object):
 
 WORD_BOUNDARY = Sound('#', '#')
 
-NULL_SOUND = Sound('∅', '∅')
+NULL = Sound('∅', '∅')
 
 ANY_SOUND = Sound('*', '*')
 
-SYMBOL_TO_SPEC_SOUND = {WORD_BOUNDARY.symbol: WORD_BOUNDARY, NULL_SOUND.symbol: NULL_SOUND, ANY_SOUND.symbol: ANY_SOUND}
+SYMBOL_TO_SPEC_SOUND = {WORD_BOUNDARY.symbol: WORD_BOUNDARY, NULL.symbol: NULL, ANY_SOUND.symbol: ANY_SOUND}
 
 
 def to_symbols(sounds: List[Sound]):
@@ -35,7 +35,7 @@ class Sounds(object):
     def __init__(self, attributes_path):
         self.sounds: Set[Sound] = set()
         self.atts_to_sound: Dict[str, Sound] = dict()
-        self.symbols_to_sounds: Dict[str, Sound] = dict()
+        self.symbol_to_sound: Dict[str, Sound] = dict()
         self.load_attributes(attributes_path)
 
     def load_attributes(self, file_path):
@@ -47,29 +47,30 @@ class Sounds(object):
                 sound = Sound(symbol, attributes)
                 self.sounds.add(sound)
                 self.atts_to_sound[attributes] = sound
-                self.symbols_to_sounds[symbol] = sound
+                self.symbol_to_sound[symbol] = sound
         attributes_file.close()
 
     def __contains__(self, item) -> bool:
         return self.sounds.__contains__(item)
 
+    def has_code(self, pot_code: str):
+        return self.atts_to_sound.keys().__contains__(pot_code)
+
+    def has_symbol(self, pot_symbol: str):
+        return self.symbol_to_sound.keys().__contains__(pot_symbol)
+
     def to_codes(self, symbols: List[str]):
-        return [self.symbols_to_sounds[symbol].attributes for symbol in symbols]
+        return [self.symbol_to_sound[symbol].attributes for symbol in symbols]
 
-    def from_symbols_to_sounds(self, symbols: List[str]):
-        if symbols == ['']:
-            return [NULL_SOUND]
-        else:
-            return [(self.symbols_to_sounds[symbol] if self.symbols_to_sounds.keys().__contains__(symbol) else
-                    SYMBOL_TO_SPEC_SOUND[symbol] )for symbol in symbols]
+    def to_sound(self, k: str):
+        return self.symbol_to_sound[k] if self.has_symbol(k) else self.atts_to_sound[k] if self.has_code(k) \
+            else SYMBOL_TO_SPEC_SOUND[k]
 
-    def from_codes_to_sounds(self, codes: List[str]):
-        if codes == ['']:
-            return [NULL_SOUND]
+    def to_sounds(self, keys: List[str]):
+        if keys == ['']:
+            return [NULL]
         else:
-            return [
-                self.atts_to_sound[code] if self.atts_to_sound.keys().__contains__(code) else SYMBOL_TO_SPEC_SOUND[code]
-                for code in codes]
+            return [self.to_sound(key) for key in keys]
 
 
 class SoundChangeSeries(object):
@@ -93,7 +94,7 @@ class SoundChangeSeries(object):
             valid_characters = []
             invalid_characters = []
             for character in raw_word:
-                if self.sounds.symbols_to_sounds.keys().__contains__(character):
+                if self.sounds.symbol_to_sound.keys().__contains__(character):
                     valid_characters.append(character)
                 else:
                     invalid_characters.append(character)
@@ -119,16 +120,6 @@ class SoundChangeSeries(object):
         f.close()
 
 
-def sequences_match(actual_sounds: List[Sound], codes: List[str]):
-    if len(actual_sounds) != len(codes):
-        return False
-    else:
-        for index in range(len(actual_sounds)):
-            if not (codes[index] == ANY_SOUND.attributes or actual_sounds[index].is_match(codes[index])):
-                return False
-    return True
-
-
 class SoundChange(object):
     def __init__(self, i_s: List[str], o_s: List[str], envs: List[List[str]], sounds: Sounds):
         def change_if_empty(input_list, pot_replacement):
@@ -136,88 +127,108 @@ class SoundChange(object):
 
         self.sounds = sounds
 
-        self.cat_to_symbols = {}
-        self.cat_to_attrs = {}
-        self._input_sounds = change_if_empty(i_s, NULL_SOUND.symbol)
-        self._output_sounds = change_if_empty(o_s, NULL_SOUND.symbol)
+        self._inp_form = change_if_empty(i_s, NULL.symbol)
+        self._outp_form = change_if_empty(o_s, NULL.symbol)
 
-        self._prec_env = change_if_empty(envs[0], ANY_SOUND.symbol)
-        self._fol_env = change_if_empty(envs[1], ANY_SOUND.symbol)
+        self._prec_form = change_if_empty(envs[0], ANY_SOUND.symbol)
+        self._fol_form = change_if_empty(envs[1], ANY_SOUND.symbol)
 
-    def get_in(self):
-        return self._input_sounds
+    def get_in_form(self):
+        return self._inp_form
 
     def get_out(self):
-        return self._output_sounds
+        return self._outp_form
 
-    def get_prec_env(self):
-        return self._prec_env
+    def get_prec_from(self):
+        return self._prec_form
 
-    def get_fol_env(self):
-        return self._fol_env
+    def get_fol_form(self):
+        return self._fol_form
 
     def get_in_len(self):
-        if self.get_in().__contains__(NULL_SOUND.symbol):
-            return len(self._input_sounds) - 1
+        if self.get_in_form().__contains__(NULL.symbol):
+            return len(self._inp_form) - 1
         else:
-            return len(self._input_sounds)
+            return len(self._inp_form)
 
     def get_prec_len(self):
-        return len(self._prec_env)
+        return len(self._prec_form)
 
     def get_fol_len(self):
-        return len(self._fol_env)
-
-    def in_cat(self, sound, category):
-        return self.cat_to_symbols[category].__contains__(sound)
-
-    def applies_to(self, pot_prec_env: List[Sound], pot_in: List[Sound], pot_fol_env: List[Sound]) -> bool:
-        return sequences_match(pot_prec_env, self._prec_env) and sequences_match(pot_in,
-                                                                                 self.get_in()) and sequences_match(
-            pot_fol_env, self._fol_env)
-
-    def check_match(self, sound_1, sound_2):
-        return sound_1 == sound_2 or self.in_cat(sound_1, sound_2)
+        return len(self._fol_form)
 
     def process(self, word: str):
+        sounds = self.sounds.to_sounds
+        sound = self.sounds.to_sound
         prec_len = self.get_prec_len()
         in_len = self.get_in_len()
         fol_len = self.get_fol_len()
-        in_pos = 1
-        seq_start = in_pos - prec_len
-        seq_end = in_pos + in_len + fol_len
-        output = WORD_BOUNDARY.symbol
-        while len(word) > in_pos:
-            if seq_end <= len(word) and seq_start > -1:
-                pot_prec_env = word[seq_start:seq_start + prec_len]
-                pot_in = NULL_SOUND.symbol if self.get_in()[0] == NULL_SOUND.symbol else word[
-                                                                           seq_start + prec_len:seq_start + prec_len + in_len]
-                pot_fol_env = word[(seq_start + prec_len + in_len):seq_end]
-                if self.applies_to(self.sounds.from_symbols_to_sounds(pot_prec_env),
-                                   self.sounds.from_symbols_to_sounds(pot_in),
-                                   self.sounds.from_symbols_to_sounds(pot_fol_env)):
-                    for index in range(len(self.get_in())):
-                        if self.get_out()[index] != NULL_SOUND.symbol:
-                            new_sound_code = ''
-                            for index_1 in range(len(self.get_out()[index])):
-                                if self.get_out()[index][index_1] == '0':
-                                    new_sound_code += self.sounds.from_symbols_to_sounds(pot_in)[index].attributes[
-                                        index_1]
-                                else:
-                                    new_sound_code += self.get_out()[index][index_1]
-                            new_sound = self.sounds.atts_to_sound[new_sound_code]
-                            output += new_sound.symbol
-                    if self.get_in()[0] == NULL_SOUND:
-                        output += word[in_pos]
-                else:
-                    output = output + word[in_pos]
-            else:
-                output = output + word[in_pos]
 
-            in_pos += max(in_len, 1)
-            seq_start = in_pos - prec_len
-            seq_end = in_pos + in_len + fol_len
-        return output
+        def get_new_sound(old_symbol: str, new_code_template: str):
+            new_code = ''
+            for index in range(len(new_code_template)):
+                if new_code_template[index] == '0':
+                    new_code += sound(old_symbol).attributes[index]
+                else:
+                    new_code += new_code_template[index]
+            return sound(new_code)
+
+        def seq_start(i):
+            return i - prec_len
+
+        def seq_end(i):
+            return i + in_len + fol_len
+
+        def i_s(i):
+            start = seq_start(i) + prec_len
+            end = start + in_len
+            return NULL.symbol if self.get_in_form()[0] == NULL.symbol else word[start:end]
+
+        def p_s(i):
+            return word[seq_start(i):seq_start(i) + prec_len]
+
+        def f_s(i):
+            return word[i + in_len:seq_end(i)]
+
+        def o_s(i):
+            output_seq = ''
+            inp = i_s(i)
+            for index in range(len(self.get_in_form())):
+                if self.get_out()[index] != NULL.symbol:
+                    output_seq += get_new_sound(inp, self.get_out()[index]).symbol
+            if self.get_in_form()[0] == NULL:
+                output_seq += word[i]
+            return output_seq
+
+        def of_form(actual_sounds: List[Sound], codes: List[str]):
+            if len(actual_sounds) != len(codes):
+                return False
+            else:
+                for index in range(len(actual_sounds)):
+                    if not (codes[index] == ANY_SOUND.attributes or actual_sounds[index].is_match(codes[index])):
+                        return False
+            return True
+
+        def applies_to(p_s: List[Sound], i_s: List[Sound], f_s: List[Sound]) -> bool:
+            return of_form(p_s, self._prec_form) and of_form(i_s, self._inp_form) and of_form(f_s, self._fol_form)
+
+        def in_range(i):
+            return seq_end(i) <= len(word) and seq_start(i) > -1
+
+        def get_out_seq(i):
+            return o_s(i) if in_range(i) and applies_to(sounds(p_s(i)), sounds(i_s(i)), sounds(f_s(i))) else \
+                word[i]
+
+        def process_input():
+            i = 1  # position of the index of beginning of the sequence of sounds to potentially be changed
+            output = WORD_BOUNDARY.symbol
+            while len(word) > i:
+                output += get_out_seq(i)
+                i += max(in_len, 1)
+
+            return output
+
+        return process_input()
 
 
 if __name__ == '__main__':
