@@ -91,25 +91,25 @@ class SoundChangeSeries(object):
 
     def apply_sound_changes(self, corpus_file_path):
         def make_processable(raw_word: str):
-            valid_characters = []
+            sounds = []
             invalid_characters = []
             for character in raw_word:
                 if self.sounds.symbol_to_sound.keys().__contains__(character):
-                    valid_characters.append(character)
+                    sounds.append(self.sounds.to_sound(character))
                 else:
                     invalid_characters.append(character)
             if len(invalid_characters) > 0:
                 print('Following unknown characters in ' + raw_word + ' ignored: ' + invalid_characters.__str__())
-            return ''.join(valid_characters)
+            return sounds
 
         output_words: List[str] = []
         with open(corpus_file_path, "r", encoding="utf8") as corpus:
-            for word in [make_processable(raw_word.strip()) for raw_word in corpus]:
+            for word in [raw_word.strip() for raw_word in corpus]:
                 stages: str = word
-                out_word: str = WORD_BOUNDARY.symbol + word + WORD_BOUNDARY.symbol
+                out_word: str = [WORD_BOUNDARY] + make_processable(word) + [WORD_BOUNDARY]
                 for sound_change in self.sound_changes:
                     out_word = sound_change.process(out_word)
-                    stages += '->' + out_word[1:len(out_word) - 1]
+                    stages += '->' + to_symbols(out_word[1:len(out_word) - 1])
                 output_words.append(stages)
         corpus.close()
 
@@ -164,11 +164,11 @@ class SoundChange(object):
         in_len = self.get_in_len()
         fol_len = self.get_fol_len()
 
-        def get_new_sound(old_symbol: str, new_code_template: str):
+        def get_new_sound(old_sound: Sound, new_code_template: str):
             new_code = ''
             for index in range(len(new_code_template)):
                 if new_code_template[index] == '0':
-                    new_code += sound(old_symbol).attributes[index]
+                    new_code += old_sound.attributes[index]
                 else:
                     new_code += new_code_template[index]
             return sound(new_code)
@@ -182,7 +182,7 @@ class SoundChange(object):
         def i_s(i):
             start = seq_start(i) + prec_len
             end = start + in_len
-            return NULL.symbol if self.get_in_form()[0] == NULL.symbol else word[start:end]
+            return [NULL] if self.get_in_form()[0] == NULL.symbol else word[start:end]
 
         def p_s(i):
             return word[seq_start(i):seq_start(i) + prec_len]
@@ -191,13 +191,13 @@ class SoundChange(object):
             return word[i + in_len:seq_end(i)]
 
         def o_s(i):
-            output_seq = ''
+            output_seq = []
             inp = i_s(i)
             for index in range(len(self.get_in_form())):
                 if self.get_out()[index] != NULL.symbol:
-                    output_seq += get_new_sound(inp, self.get_out()[index]).symbol
+                    output_seq.append(get_new_sound(inp[index], self.get_out()[index]))
             if self.get_in_form()[0] == NULL:
-                output_seq += word[i]
+                output_seq.append(word[i])
             return output_seq
 
         def of_form(actual_sounds: List[Sound], codes: List[str]):
@@ -216,14 +216,13 @@ class SoundChange(object):
             return seq_end(i) <= len(word) and seq_start(i) > -1
 
         def get_out_seq(i):
-            return o_s(i) if in_range(i) and applies_to(sounds(p_s(i)), sounds(i_s(i)), sounds(f_s(i))) else \
-                word[i]
+            return word[i:i + max(in_len, 1)] if not in_range(i) or not applies_to(p_s(i), i_s(i), f_s(i)) else o_s(i)
 
         def process_input():
             i = 1  # position of the index of beginning of the sequence of sounds to potentially be changed
-            output = WORD_BOUNDARY.symbol
+            output = [WORD_BOUNDARY]
             while len(word) > i:
-                output += get_out_seq(i)
+                output.extend(get_out_seq(i))
                 i += max(in_len, 1)
 
             return output
