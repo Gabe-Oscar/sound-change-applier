@@ -1,7 +1,7 @@
 from typing import List, Dict, Set
 
 
-class BasePhone(object):
+class Phone(object):
     def __init__(self, symbol: str, attributes: str):
         self.symbol = symbol
         self.code = attributes
@@ -18,8 +18,14 @@ class BasePhone(object):
     def is_category(self):
         return self.category_status
 
-    def __str__(self):
+    def get_code(self):
+        return self.code
+
+    def get_symbol(self):
         return self.symbol
+
+    def __str__(self):
+        return self.get_symbol()
 
 
 class Modifier(object):
@@ -27,18 +33,16 @@ class Modifier(object):
         self.symbol = symbol
 
 
-class RichPhone(object):
-    def __init__(self, base_phone: BasePhone, modifiers: Set[Modifier]):
-        self.base = base_phone
-        self.category_status = base_phone.category_status
+class RichPhone(Phone):
+    def __init__(self, symbol: str, attributes: str, modifiers: Set[Modifier]):
+        super().__init__(symbol + ''.join(modifier.symbol for modifier in modifiers), attributes)
         self.modifiers = modifiers
-        self.symbol = base_phone.symbol + ''.join([modifier.symbol for modifier in modifiers])
 
     def matches(self, other):
-        if isinstance(other, BasePhone):
-            return self.base.matches(other)
+        if isinstance(other, Phone):
+            return super().matches(other)
         elif isinstance(other, RichPhone):
-            if self.base.matches(other.base):
+            if super(RichPhone, self).matches(other):
                 if self.modifiers.__eq__(other.modifiers):
                     return True
                 elif self.category_status:
@@ -49,26 +53,28 @@ class RichPhone(object):
     #  self.base.matches(other.base) and self.modifiers.__eq__(other.modifiers)
 
 
-WORD_BOUNDARY = BasePhone('#', '#')
+WORD_BOUNDARY = Phone('#', '#')
 
-NULL = BasePhone('∅', '∅')
+NULL = Phone('∅', '∅')
 
-ANY_SOUND = BasePhone('*', '*')
+ANY_SOUND = Phone('*', '*')
 
 SYMBOL_TO_SPEC_SOUND = {WORD_BOUNDARY.symbol: WORD_BOUNDARY, NULL.symbol: NULL, ANY_SOUND.symbol: ANY_SOUND}
 
 
-def to_symbols(sounds: List[BasePhone]):
+def to_symbols(sounds: List[Phone]):
     return ''.join(sound.symbol for sound in sounds)
 
 
 class Phones(object):
     def __init__(self, attributes_path, modifiers_path):
-        self.sounds: Set[BasePhone] = set()
+        self.sounds: Set[Phone] = set()
         self.modifiers: Set[Modifier] = set()
-        self.code_to_sound: Dict[str, BasePhone] = dict()
-        self.symbol_to_sound: Dict[str, BasePhone] = dict()
+        self.to_modifier: Dict[str, Modifier] = dict()
+        self.code_to_sound: Dict[str, Phone] = dict()
+        self.symbol_to_sound: Dict[str, Phone] = dict()
         self.load_attributes(attributes_path)
+        self.load_modifiers(modifiers_path)
         self.next_cat_symbol = 65
 
     def load_attributes(self, file_path):
@@ -77,7 +83,7 @@ class Phones(object):
             for line in attributes_file:
                 attributes = line.strip().split(',')[1]
                 symbol = line[0]
-                sound = BasePhone(symbol, attributes)
+                sound = Phone(symbol, attributes)
                 self.sounds.add(sound)
                 self.code_to_sound[attributes] = sound
                 self.symbol_to_sound[symbol] = sound
@@ -86,9 +92,11 @@ class Phones(object):
 
     def load_modifiers(self, file_path):
         with open(file_path, "r", encoding="utf8") as modifiers_file:
-            modifiers_file.next()
+            modifiers_file.__next__()
             for line in modifiers_file:
-                self.modifiers.add(Modifier(line.strip()))
+                modifier = Modifier(line.strip())
+                self.modifiers.add(modifier)
+                self.to_modifier[modifier.symbol] = modifier
 
     def __contains__(self, item) -> bool:
         return self.sounds.__contains__(item)
@@ -102,22 +110,31 @@ class Phones(object):
     def to_codes(self, symbols: List[str]):
         return [self.symbol_to_sound[symbol].code for symbol in symbols]
 
-    def add_category(self, code: str) -> BasePhone:
+    def get_unique_symbol(self) -> str:
+        while self.symbol_to_sound.keys().__contains__(chr(self.next_cat_symbol)):
+            self.next_cat_symbol += 1
+        return chr(self.next_cat_symbol)
+
+    def add_category(self, code: str) -> Phone:
         if self.has_code(code):
             return self.code_to_sound[code]
         else:
-            while self.symbol_to_sound.keys().__contains__(chr(self.next_cat_symbol)):
-                self.next_cat_symbol += 1
-            category = BasePhone(chr(self.next_cat_symbol), code)
+            category = Phone(self.get_unique_symbol(), code)
             self.sounds.add(category)
             self.symbol_to_sound[chr(self.next_cat_symbol)] = category
             return category
 
     def to_sound(self, k: str):
-        if k[0] == '{' and k[len(k) - 1] == '}':
-            return self.add_category(k[1:len(k) - 1])
-        elif self.has_symbol(k):
-            return self.symbol_to_sound[k]
+        if k[0] == '{':
+            symbol = self.get_unique_symbol()
+            code = k[1:k.index('}')]
+            modifiers = self.to_modifiers(k[k.index('}') + 1:len(k)])
+            new_rich_phone = RichPhone(symbol,code,modifiers)
+            self.symbol_to_sound[symbol] = new_rich_phone
+            return new_rich_phone
+        elif self.has_symbol(k[0]):
+            base_phone = self.symbol_to_sound[k[0]]
+            return RichPhone(base_phone.symbol, base_phone.code, self.to_modifiers(k[1:len(k)]) if len(k) > 1 else [])
         elif self.has_code(k):
             return self.code_to_sound[k]
         elif SYMBOL_TO_SPEC_SOUND.keys().__contains__(k):
@@ -131,20 +148,24 @@ class Phones(object):
         else:
             return [self.to_sound(key) for key in self.tokenize(keys)]
 
+    def to_modifiers(self, keys: str):
+        return [self.to_modifier[key] for key in keys]
+
     def tokenize(self, input_string: str) -> List[str]:
         output_list = []
         index = 0
         while index < len(input_string):
             if self.has_symbol(input_string[index]) or input_string[index] in SYMBOL_TO_SPEC_SOUND.keys():
                 output_list.append(input_string[index])
-                index = index + 1
             elif input_string[index] == '{':
                 end_index = input_string.find("}", index) + 1
                 output_list.append(input_string[index:end_index])
-                index = end_index
+                index = end_index - 1
+            elif self.to_modifier.keys().__contains__((input_string[index])):
+                output_list[len(output_list) - 1] += input_string[index]
             else:
                 raise ValueError("invalid token: " + input_string[index])
-
+            index += 1
         return output_list
 
 
@@ -184,8 +205,10 @@ class SoundChangeSeries(object):
                 stages: str = word
                 out_word: str = [WORD_BOUNDARY] + make_processable(word) + [WORD_BOUNDARY]
                 for sound_change in self.sound_changes:
-                    out_word = sound_change.process(out_word)
-                    stages += '->' + to_symbols(out_word[1:len(out_word) - 1])
+                    new_out_word = sound_change.process(out_word)
+                    if new_out_word != out_word:
+                        stages += '->' + to_symbols(new_out_word[1:len(new_out_word) - 1])
+                    out_word = new_out_word
                 output_words.append(stages)
         corpus.close()
 
@@ -197,7 +220,7 @@ class SoundChangeSeries(object):
 
 
 class SoundChange(object):
-    def __init__(self, i_s: List[BasePhone], o_s: List[BasePhone], envs: List[List[BasePhone]], sounds: Phones):
+    def __init__(self, i_s: List[Phone], o_s: List[Phone], envs: List[List[Phone]], sounds: Phones):
         def change_if_null(input_list, pot_replacement):
             return input_list if input_list != [NULL] else [pot_replacement]
 
@@ -205,6 +228,8 @@ class SoundChange(object):
 
         self._inp_form = i_s
         self._outp_form = o_s
+        while len(o_s) < len(i_s):
+            o_s.append(NULL)
 
         self._prec_form = change_if_null(envs[0], ANY_SOUND)
         self._fol_form = change_if_null(envs[1], ANY_SOUND)
@@ -239,14 +264,14 @@ class SoundChange(object):
         in_len = self.get_in_len()
         fol_len = self.get_fol_len()
 
-        def get_new_sound(old_sound: BasePhone, new_sound: BasePhone):
+        def get_new_sound(old_sound: RichPhone, new_sound: RichPhone):
             new_code = ''
             for index in range(len(new_sound.code)):
                 if new_sound.code[index] == '0':
                     new_code += old_sound.code[index]
                 else:
                     new_code += new_sound.code[index]
-            return sound(new_code)
+            return RichPhone(sound(new_code).symbol, new_code, new_sound.modifiers)
 
         def seq_start(i):
             return i - prec_len
@@ -275,7 +300,7 @@ class SoundChange(object):
                 output_seq.append(word[i])
             return output_seq
 
-        def of_form(actual_sounds: List[BasePhone], form_sounds: List[BasePhone]):
+        def of_form(actual_sounds: List[Phone], form_sounds: List[Phone]):
             if len(actual_sounds) != len(form_sounds):
                 return False
             else:
@@ -284,26 +309,33 @@ class SoundChange(object):
                         return False
             return True
 
-        def applies_to(p_s: List[BasePhone], i_s: List[BasePhone], f_s: List[BasePhone]) -> bool:
+        def applies_to(p_s: List[Phone], i_s: List[Phone], f_s: List[Phone]) -> bool:
             return of_form(p_s, self._prec_form) and of_form(i_s, self._inp_form) and of_form(f_s, self._fol_form)
 
         def in_range(i):
             return seq_end(i) <= len(word) and seq_start(i) > -1
 
         def get_out_seq(i):
-            return word[i:i + max(in_len, 1)] if not in_range(i) or not applies_to(p_s(i), i_s(i), f_s(i)) else o_s(i)
+            return word[i] if not in_range(i) or not applies_to(p_s(i), i_s(i), f_s(i)) else o_s(i)
 
         def process_input():
             i = 1  # position of the index of beginning of the sequence of sounds to potentially be changed
             output = [WORD_BOUNDARY]
             while len(word) > i:
-                output.extend(get_out_seq(i))
-                i += max(in_len, 1)
+                if in_range(i) and applies_to(p_s(i), i_s(i), f_s(i)):
+                    out_seq = get_out_seq(i)
+                    output.extend(out_seq)
+                    i += max(in_len, 1)
+                else:
+                    output.append(word[i])
+                    i += 1
 
             return output
 
         return process_input()
 
+    def __str__(self):
+        return to_symbols(self._inp_form) + ' -> ' + to_symbols(self._outp_form) + ' / ' + to_symbols(self._prec_form) + '_' + to_symbols(self._fol_form)
 
 if __name__ == '__main__':
     series = SoundChangeSeries('attributes', 'modifiers', 'changes')
