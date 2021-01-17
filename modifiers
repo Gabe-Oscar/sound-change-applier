@@ -1,6 +1,6 @@
-symbol
-:
-̃
-ʰ
-ʲ
-ʷ
+symbol, is_diacritic
+:,0
+̃,1
+ʰ,0
+ʲ,0
+ʷ,0

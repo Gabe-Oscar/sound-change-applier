@@ -1,6 +1,6 @@
 θaθað->tatad->tadad
-apap->abap
-aɸaɸ->aβaɸ
-spaka->spaga->espaga->e:paga
-haspaka->haspaga->ha:paga
-123
+apap->abap->abap
+aɸaɸ->aβaɸ->aβaɸ
+spaka->spaga->espaga->e:paga->e:pəga->epəga
+haspaka->haspaga->ha:paga->ha:pəga->hapəga
+lagasna->lagasna->laga:na->laga:nə->laga:n->lagã:
