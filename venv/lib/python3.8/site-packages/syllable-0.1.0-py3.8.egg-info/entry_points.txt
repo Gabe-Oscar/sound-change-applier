@@ -1,0 +1,3 @@
+[console_scripts]
+syllable = syllable.cli:main
+

@@ -1,4 +1,6 @@
 from typing import List, Dict, Set
+
+from SoundSuite import Phones
 from Sounds import *
 
 

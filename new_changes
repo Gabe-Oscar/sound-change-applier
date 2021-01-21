@@ -1,0 +1,6 @@
+{h/poa=dental},{b/moa=plosive&h/poa=alveolar},_
+{type=consonant&r/v=voiced&b/moa=plosive},{b/moa=fricative},{type=vowel}_{type=vowel}
+{type=consonant&r/v=voiced&b/moa=fricative},{b/moa=approximant},{type=vowel}_{type=vowel}
+{type=consonant&r/v=unvoiced},{r/v=voiced},{type=vowel}_{type=vowel}
+,e,#_s-{b/moa=plosive}
+s,,{type=vowel}_{b/moa=plosive}

@@ -1,0 +1,21 @@
+value,type,b/moa,h/poa,r/v
+0,any,any,any,any
+1,vowel,front,close,unrounded
+2,consonant,central,near-close,rounded
+3,,back,close-mid,unvoiced
+4,,plosive,central,voiced
+5,,nasal,open-mid
+6,,trill,near-open
+7,,tap/flap,open
+8,,fricative,bilabial
+9,,lateral fricative,labiodental
+a,,approximant,dental
+b,,lateral approximant,alveolar
+c,,labiovelar,postalveolar
+d,,,retroflex
+e,,,palatal
+f,,,velar
+g,,,uvular
+h,,,pharyngeal
+i,,,glottal
+j,,,labiovelar

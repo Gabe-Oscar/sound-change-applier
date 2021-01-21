@@ -1,0 +1,63 @@
+Metadata-Version: 1.1
+Name: syllable
+Version: 0.1.0
+Summary: Package that send a word or words set to service and get the syllabes of each phrase sent
+Home-page: https://github.com/bgarcial/syllable
+Author: Bernardo Augusto Garcia Loaiza
+Author-email: botibagl@gmail.com
+License: MIT license
+Description: ========
+        Syllable
+        ========
+        
+        
+        .. image:: https://img.shields.io/pypi/v/syllable.svg
+                :target: https://pypi.python.org/pypi/syllable
+        
+        .. image:: https://img.shields.io/travis/bgarcial/syllable.svg
+                :target: https://travis-ci.org/bgarcial/syllable
+        
+        .. image:: https://readthedocs.org/projects/syllable/badge/?version=latest
+                :target: https://syllable.readthedocs.io/en/latest/?badge=latest
+                :alt: Documentation Status
+        
+        
+        
+        
+        Package that send a word or words set to service and get the syllabes of each phrase sent
+        
+        
+        * Free software: MIT license
+        * Documentation: https://syllable.readthedocs.io.
+        
+        
+        Features
+        --------
+        
+        * TODO
+        
+        Credits
+        -------
+        
+        This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+        
+        .. _Cookiecutter: https://github.com/audreyr/cookiecutter
+        .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+        
+        
+        =======
+        History
+        =======
+        
+        0.1.0 (2018-03-10)
+        ------------------
+        
+        * First release on PyPI.
+        
+Keywords: syllable
+Platform: UNKNOWN
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.6
