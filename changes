@@ -1,8 +1,4 @@
-{20a0},{04b0},_
-{2000},{0004},V_V
-,e,#_sC
-Vs,V+:,_C
-V,ə,V:C_
-ə,,_#
-VN,V+̃,_
-V,V-:,_{0003}
+[-sonorant]/[+voice]/_[-syllabic,+voice]
+[-sonorant]/[+continuant]/_[-sonorant,-continuant]
+NULL/[+syllabic,-high,-low,-round]/#[-syllabic]_[-syllabic]
+[-syllabic]/[-lateral]/_                                

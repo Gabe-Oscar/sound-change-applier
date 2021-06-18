@@ -2,6 +2,8 @@ import re
 
 from Sounds import *
 from Syllable import Syllable, Shell, Nucleus
+
+
 class Phones(object):
     def __init__(self, attributes_path, modifiers_path):
         self.sounds: Set[Phone] = set()
@@ -12,7 +14,6 @@ class Phones(object):
         self.load_attributes(attributes_path)
         self.load_modifiers(modifiers_path)
         self.next_cat_symbol = 65
-
 
     def load_attributes(self, file_path):
         with open(file_path, "r", encoding="utf8") as attributes_file:
@@ -64,15 +65,15 @@ class Phones(object):
             self.symbol_to_sound[chr(self.next_cat_symbol)] = category
             return category
 
-    def to_sound(self, k: str):
+    def to_sound(self, k: str, stress: str = '*'):
         if k[0] == '{':
             code = k[1:k.index('}')]
             modifiers = k[k.index('}') + 1:len(k)]
-            return self.to_sound(self.add_category(code).symbol + modifiers)
+            return self.to_sound(self.add_category(code).symbol + modifiers, stress)
         elif self.has_symbol(k[0]):
             base_phone = self.symbol_to_sound[k[0]]
             return RichPhone(base_phone.symbol, base_phone.code,
-                             set(self.to_modifiers(k[1:len(k)]) if len(k) > 1 else []))
+                             set(self.to_modifiers(k[1:len(k)]) if len(k) > 1 else []), stress)
         elif SYMBOL_TO_SPEC_SOUND.keys().__contains__(k):
             return SYMBOL_TO_SPEC_SOUND[k]
         else:
@@ -82,9 +83,9 @@ class Phones(object):
         if keys == '':
             return [NULL]
         else:
-            return [self.to_sound(key) for key in self.tokenize(keys)]
+            return [self.to_sound(key[1:], key[0]) for key in self.tokenize(keys, inc_stress=True)]
 
-    def to_template_sound(self, k: str):
+    def to_template_sound(self, k: str, stress='*'):
         mod_to_add = set()
         mod_to_remove = set()
         if k[0] == '{':
@@ -93,7 +94,7 @@ class Phones(object):
             return self.to_template_sound(self.add_category(code).symbol + modifiers)
         elif self.has_symbol(k[0]):
             base_phone = self.symbol_to_sound[k[0]]
-            index = 1
+        index = 1
         while index < len(k):
             if k[index] == '+':
                 mod_to_add.add(self.to_modifier[k[index + 1]])
@@ -103,26 +104,30 @@ class Phones(object):
                 raise ValueError(k[index])
             index += 2
 
-        return TemplatePhone(base_phone.symbol, base_phone.code, mod_to_add, mod_to_remove)
+        return TemplatePhone(base_phone.symbol, base_phone.code, mod_to_add, mod_to_remove, stress)
 
     def to_template_sounds(self, keys: str):
         if keys == '':
             return [NULL_TEMP_PHONE]
         else:
-            return [self.to_template_sound(token) for token in self.tokenize(keys)]
+            return [self.to_template_sound(key[1:], key[0]) for key in self.tokenize(keys, inc_stress=True)]
 
     def to_modifiers(self, keys: str):
         return [self.to_modifier[key] for key in keys]
 
-    def tokenize(self, input_string: str) -> List[str]:
+    def tokenize(self, input_string: str, inc_stress=False) -> List[str]:
         output_list = []
         index = 0
+        stress = '*' if inc_stress else ''
         while index < len(input_string):
+            if STRESSES.__contains__(input_string[index]):
+                stress = input_string[index]
+                index += 1
             if self.has_symbol(input_string[index]) or input_string[index] in SYMBOL_TO_SPEC_SOUND.keys():
-                output_list.append(input_string[index])
+                output_list.append(stress + input_string[index])
             elif input_string[index] == '{':
                 end_index = input_string.find("}", index) + 1
-                output_list.append(input_string[index:end_index])
+                output_list.append(stress + input_string[index:end_index])
                 index = end_index - 1
             elif input_string[index] in {'+', '-'}:
                 output_list[len(output_list) - 1] += input_string[index:index + 2]

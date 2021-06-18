@@ -1,6 +1,6 @@
-θaθað->tatad->tadad
-apap->abap->abap
-aɸaɸ->aβaɸ->aβaɸ
-spaka->spaga->espaga->e:paga->e:pəga->epəga
-haspaka->haspaga->ha:paga->ha:pəga->hapəga
-lagasna->lagasna->laga:na->laga:nə->laga:n->lagã:
+ˈθa.θað->tatad->tadad->tadəd
+.aˈpap->abap->əbap->əbap
+ˈaɸ.aɸ->aβaɸ->aβəɸ->aβəɸ
+ˈspe.ka->spega->espega->e:pega->e:pegə->e:peg->epeg
+ˈhas.paˌka->haspaga->ha:paga->ha:pəga->hapəga
+ˈlaˌga.sna->lagasna->laga:na->laga:nə->laga:n->lagã:
