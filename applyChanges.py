@@ -1,6 +1,4 @@
 from Inventory import Inventory
-from SoundSuite import Phones
-from Sounds import *
 import pynini
 import pynini.lib.rewrite as rewrite
 
