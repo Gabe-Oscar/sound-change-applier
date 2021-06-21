@@ -1,4 +1,3 @@
-{h/poa=dental},{b/moa=plosive&h/poa=alveolar},_
-{type=consonant},{r/v=voiced},{type=vowel}_{type=vowel}
-,e,#_s{b/moa=plosive}
-s,,{V}_{b/moa=plosive}
+[-sonorant]/[+continuant]/_[-sonorant,-continuant]
+NULL/[+syllabic,-high,-low,-round]/#[-syllabic]_[-syllabic]
+[-syllabic]/[-lateral]/_
