@@ -18,6 +18,7 @@ class Inventory(object):
         self.syms: set = set()
 
         self.active_sounds: set = set()
+        self.distinctive_features: set = set()
 
     def load_features(self, features_file_path):
         with open(features_file_path) as features:
@@ -41,6 +42,22 @@ class Inventory(object):
         with open(sounds_file_path) as sounds_file:
             for sound in sounds_file:
                 self.active_sounds.add(sound.strip())
+
+    def generate_distinctive_features(self):
+        # gets rid of features that have the same value for every active sound
+        def remove_static_features(feature_set):
+            output_set = set()
+            for feature in feature_set:
+                value_set = set([self.sym_to_feats[sound][feature] for sound in self.active_sounds])
+                if len(value_set) > 1:
+                    output_set.add(feature)
+            return output_set
+
+        if len(self.active_sounds) == 0:
+            raise ValueError("Must load active sounds before running this method")
+        else:
+            self.distinctive_features = remove_static_features(self.feats)
+
 
     def generate_env(self, environment):
         if environment == ["*"]:
