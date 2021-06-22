@@ -1,3 +1,5 @@
-[-sonorant]/[+continuant]/_[-sonorant,-continuant]
 NULL/[+syllabic,-high,-low,-round]/#[-syllabic]_[-syllabic]
-[-syllabic]/[-lateral]/_
+[-sonorant]/[+voice]/_[-syllabic,+voice]
+[+CORONAL, +continuant, -sonorant]/[+strident]/_
+[+lateral]/[-lateral]/_
+[-sonorant]/[-continuant]/_#

@@ -1,6 +1,7 @@
 from collections import defaultdict, Set
 import csv
-from typing import DefaultDict, Dict
+from typing import DefaultDict, Dict, List
+from queue import Queue
 
 POS = 1
 NEG = 2
@@ -11,15 +12,15 @@ WORD_BOUNDARY = "#"
 class Inventory(object):
     # TODO: Add mechanism to prune non-distinctive features
     def __init__(self):
-        self.sym_to_feats: dict = dict()
-        self.feat_to_syms: defaultdict = defaultdict(list)
-        self.neg_feat_to_sym: defaultdict = defaultdict(list)
-        self.feats: set = set()
-        self.syms: set = set()
+        self.sym_to_feats: DefaultDict[str, dict] = defaultdict(dict)
+        self.feat_to_syms: DefaultDict[str, set] = defaultdict(set)
+        self.neg_feat_to_sym: DefaultDict[str, set] = defaultdict(set)
+        self.feats: Set[str] = set()
+        self.syms: Set[str] = set()
 
-        self.active_sounds: set = set()
-        self.distinctive_features: set = set()
-
+        self.active_sounds: Set[str] = set()
+        self.distinctive_features: Set[str] = set()
+        self.sym_to_dist_feats: DefaultDict[str, dict] = defaultdict(dict)
     def load_features(self, features_file_path):
         with open(features_file_path) as features:
             self.feats = features.readline().strip().split(',')[1:]
@@ -30,9 +31,9 @@ class Inventory(object):
                 for i in range(0, len(f_l) - 1):
                     feat_to_val[self.feats[i]] = bool(int(f_l[i + 1]))
                     if feat_to_val[self.feats[i]] == POS:
-                        self.feat_to_syms[self.feats[i]].append(sym)
+                        self.feat_to_syms[self.feats[i]].add(sym)
                     else:
-                        self.neg_feat_to_sym[self.feats[i]].append(sym)
+                        self.neg_feat_to_sym[self.feats[i]].add(sym)
                 self.sym_to_feats[sym] = feat_to_val
 
     def has_feature(self, symbol, feature):
@@ -45,18 +46,25 @@ class Inventory(object):
 
     def generate_distinctive_features(self):
         # gets rid of features that have the same value for every active sound
-        def remove_static_features(feature_set):
-            output_set = set()
-            for feature in feature_set:
+        def remove_static_features():
+            for feature in self.distinctive_features.copy():
                 value_set = set([self.sym_to_feats[sound][feature] for sound in self.active_sounds])
-                if len(value_set) > 1:
-                    output_set.add(feature)
-            return output_set
+                if len(value_set) <= 1:
+                    self.distinctive_features.remove(feature)
+
+        # removes feature A if:
+        #   - there is a feature B with which feature A always occurs
+        #   - feature B does not always occur with feature A
+        #   -
 
         if len(self.active_sounds) == 0:
             raise ValueError("Must load active sounds before running this method")
         else:
-            self.distinctive_features = remove_static_features(self.feats)
+            self.distinctive_features = self.feats.copy()
+            remove_static_features()
+            for active_sound in self.active_sounds:
+                for distinctive_feature in self.distinctive_features:
+                    self.sym_to_dist_feats[active_sound][distinctive_feature] = self.sym_to_feats[active_sound][distinctive_feature]
 
 
     def generate_env(self, environment):
@@ -67,47 +75,89 @@ class Inventory(object):
         else:
             return self.select_active_sounds(environment)
 
-    def select_active_sounds(self, feature_list):
+    def select_active_sounds_with_feature(self, feature: str):
+        return self.select_active_sounds([feature])
+
+
+
+    def select_active_sounds(self, feature_list: List[str]):
         if feature_list == ["*"]:
             return self.active_sounds
-        sound_pool = self.active_sounds.copy()
+        sound_pool: set = self.active_sounds.copy()
+
         for feature in feature_list:
-            new_sound_pool = set()
             if isinstance(feature_list, list):
                 sign = feature[0] == "+"
-                content = feature[1:]
+                feature = feature[1:]
             else:
                 sign = feature_list[feature]
-                content = feature
-            for sound in sound_pool:
-                if self.sym_to_feats[sound][content] == sign:
-                    new_sound_pool.add(sound)
-            sound_pool = new_sound_pool
+            if sign:
+                sound_pool = sound_pool.intersection(self.feat_to_syms[feature])
+            else:
+                sound_pool = sound_pool.intersection(self.neg_feat_to_sym[feature])
+
+     #       for sound in sound_pool:
+       #         if self.sym_to_feats[sound][content] == sign:
+      #              new_sound_pool.add(sound)
+       #     sound_pool = new_sound_pool
         return sound_pool
 
-    def select_active_sound(self, feature_list):
-        sound_pool = self.select_active_sounds(feature_list)
-        if len(sound_pool) > 1:
-            raise ValueError("Criteria applies to multiple active sounds")
-
-        if len(sound_pool) == 0:
-            raise ValueError("Criteria doesn't apply to any active sounds; "
-                             "add new active sounds before applying this rule")
-        else:
-            return sound_pool.pop()
 
     def add_active_sound(self, new_sound):
         if new_sound in self.syms:
-            self.active_sounds.append(new_sound)
+            self.active_sounds.add(new_sound)
+            self.distinctive_features = self.feats
+            self.generate_distinctive_features()
 
         else:
             raise ValueError("Symbol not recognized")
 
     def get_variant(self, in_sound, changes):
-        out_sound_features = self.sym_to_feats[in_sound].copy()
+        out_sound_features = self.sym_to_dist_feats[in_sound].copy()
+        contents = set()
+        eigenschaften = dict()
+
         for feat_change in changes:
             sign = feat_change[0] == "+"
             content = feat_change[1:]
+            contents.add(content)
             out_sound_features[content] = sign
+            eigenschaften[content] = sign
 
-        return self.select_active_sound(out_sound_features)
+        sound_pool = self.select_active_sounds(out_sound_features)
+        if len(sound_pool) > 1:
+            raise ValueError("Criteria applies to multiple active sounds")
+        elif len(sound_pool) == 0:
+            pot_variants = self.select_active_sounds(eigenschaften)
+            out_sound_features_set = set(out_sound_features.items())
+            pvfs = set(self.sym_to_feats[pot_variants.pop()].items())
+            for pot_variant in pot_variants:
+                pvfs = pvfs.intersection(set(self.sym_to_feats[pot_variant].items()))
+            donbother = set(featurepaire[0] for featurepaire in out_sound_features_set.intersection(pvfs))
+            mutable_list = list(set(self.distinctive_features).difference(contents).difference(donbother))
+
+            cdb = list(contents.union(donbother))
+            attempt = mutable_list.copy()
+            to_try = Queue()
+            to_try.put(attempt)
+            popped = ''
+            while len(sound_pool) != 1 and not to_try.empty():
+                curr_try = to_try.get()
+                curr_features = {key: out_sound_features[key] for key in (curr_try + cdb)}
+                for j in range(len(curr_try)):
+                    new_features = curr_features.copy()
+                    new_features.pop(curr_try[j])
+                    new_try = curr_try[0:j] + curr_try[j+1:]
+                    sound_pool = self.select_active_sounds(new_features)
+                    if len(sound_pool) == 0:
+                        to_try.put(new_try)
+                    elif len(sound_pool) == 1:
+                        break
+
+        if len(sound_pool) == 1:
+            return sound_pool.pop()
+        else:
+            raise ValueError("Criteria doesn't apply to any active sounds; "
+                             "add new active sounds before applying this rule")
+
+
