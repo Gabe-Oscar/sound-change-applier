@@ -34,34 +34,33 @@ class Inventory(object):
         with open(features_file_path, encoding="utf-8") as features:
             self.feats = features.readline().strip().split(',')[1:]
             for f_l in csv.reader(features):
-                feat_to_val = dict()
                 sym = f_l[0]
+                vals = f_l[1:]
                 if sym[0] != '_':
+                    feat_to_val = dict()
+
                     self.syms.add(sym)
-                    for i in range(0, len(f_l) - 1):
-                        feat_to_val[self.feats[i]] = bool(int(f_l[i + 1]))
+                    for i in range(0, len(vals)):
+                        feat_to_val[self.feats[i]] = bool(int(vals[i]))
                         if feat_to_val[self.feats[i]] == POS:
                             self.feat_to_syms[self.feats[i]].add(sym)
                         else:
                             self.neg_feat_to_sym[self.feats[i]].add(sym)
                     self.sym_to_feats[sym] = feat_to_val
                 else:
-                    t_b_modified = set()
-                    for i in range(1, len(f_l)):
-                        if f_l[i] != '':
-                            t_b_modified.add(i)
                     for each_sym in self.syms.copy():
+                        feat_to_val = dict()
                         sym_variant = each_sym + sym[1:]
                         self.syms.add(sym_variant)
-                        for i in range(0, len(f_l) - 1):
-                            if i in t_b_modified:
-                                feat_to_val[self.feats[i]] = bool(int(f_l[i+1]))
+                        for i in range(0, len(vals)):
+                            if vals[i] != '_':
+                                feat_to_val[self.feats[i]] = bool(int(vals[i]))
                             else:
                                 feat_to_val[self.feats[i]] = self.sym_to_feats[each_sym][self.feats[i]]
                             if feat_to_val[self.feats[i]] == POS:
-                                self.feat_to_syms[self.feats[i]].add(sym)
+                                self.feat_to_syms[self.feats[i]].add(sym_variant)
                             else:
-                                self.neg_feat_to_sym[self.feats[i]].add(sym)
+                                self.neg_feat_to_sym[self.feats[i]].add(sym_variant)
                         self.sym_to_feats[sym_variant] = feat_to_val
     def has_feature(self, symbol, feature):
         return self.sym_to_feats[symbol][feature] == 1
