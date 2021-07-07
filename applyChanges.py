@@ -1,13 +1,55 @@
 from typing import Tuple, List, Set
-
+import re
 from Inventory import Inventory
+from Inventory import NULL
+import numpy
 import pynini
 import pynini.lib.rewrite as rewrite
+import pynini.lib.pynutil as pynutil
+import pywrapfst
+import pynini.lib.edit_transducer as edit_transducer
+
+
+def make_string(formula):
+    processed_formula = [[character for character in line.split("\t")] for line in formula.__str__().split("\n")]
+    in_chars = []
+    out_chars = []
+    something = []
+    something_else = []
+    for line in processed_formula:
+        if len(line) > 0:
+            something.append((line[0]))
+        else:
+            something.append('')
+            something_else.append('')
+            in_chars.append('')
+            out_chars.append('')
+        if len(line) > 1:
+            something_else.append((line[1]))
+        else:
+            something_else.append('')
+            in_chars.append('')
+            out_chars.append('')
+        if len(line) > 2:
+            in_chars.append(chr(int(line[2])))
+        # in_chars.append(line[2])
+        else:
+            in_chars.append('')
+            out_chars.append('')
+        if len(line) > 3:
+            out_chars.append(chr(int(line[3])))
+        else:
+            out_chars.append('')
+    return numpy.array([[s, se, i, o] for s, se, i, o in zip(something, something_else, in_chars, out_chars)])
 
 
 class SoundChangeSeries(object):
     def __init__(self, changes_path, inventory):
         self.inventory = inventory
+        self.insertion_count = 0
+        pynini.default_token_type("utf-8")
+
+        self.sigma_star = pynini.closure(pynini.union(*self.inventory.syms.union("#"))).optimize()
 
         self.formula = self.load_sound_changes(changes_path)
 
@@ -15,59 +57,92 @@ class SoundChangeSeries(object):
         """loads sound changes from file"""
 
         def process_feature_stuff(text):
-            text = text.replace(" ", "")
-            text = text.replace("][", "|")[1:len(text) - 1]
+            text = re.sub("\s", "", text)
+            text = re.sub("]\[", "|", text)
+            text = re.sub("[\[\]]", "", text)
             final_text = [feature_bundle.split(",") for feature_bundle in text.split("|")]
             return final_text
 
         def process_target(target_text):
-            if target_text == "NULL":
-                target_text = "[*]"
+            if NULL in target_text:
+                self.insertion_count += 1
             target_strings = process_feature_stuff(target_text)
             targets = [self.inventory.select_active_sounds(target_string) for target_string in target_strings]
             return targets
 
         def gen_in_to_out(input_sets, output_text):
             output_strings = process_feature_stuff(output_text)
-            output_dict = dict()
-            for input_sounds, output_string in zip(input_sets, output_strings):
-                for input_sound in input_sounds:
-                    output_dict[input_sound] = self.inventory.get_variant(input_sound, output_string)
-            return output_dict.items()
+            output_dicts = [{} for sub in range(len(input_sets))]
+            for i in range(len(input_sets)):
+                for input_sound in input_sets[i]:
+                    output = self.inventory.get_variant(input_sound, output_strings[i])
+                    if i >= 1:
+                        for prev_input_sound in output_dicts[i - 1]:
+                            output_dicts[i][prev_input_sound + input_sound] = output_dicts[i - 1][
+                                                                                  prev_input_sound] + output
+                    else:
+                        output_dicts[i][input_sound] = output
+
+            return list(output_dicts[len(output_dicts) - 1].items())
 
         def process_envs(env_text):
             env_texts = env_text.split('_')
             for i in range(len(env_texts)):
                 if env_texts[i] == "":
-                    env_texts[i] = "[*]"
+                    env_texts[i] = "[]"
                 elif env_texts[i] == "#":
                     env_texts[i] = "[#]"
-
             processed_envs = [process_feature_stuff(env) for env in env_texts]
             return [[self.inventory.generate_env(env_string) for env_string in env] for env in processed_envs]
 
         def generate_formula(in_to_out: List[Tuple[str]], envs: Tuple[Set[str]]):
-            sigma_star = pynini.closure(pynini.union(*self.inventory.active_sounds.union("#"))).optimize()
-            string_map = pynini.string_map(in_to_out).ques.optimize()
-            env_formulas = []
-            for env in envs:
-                env_formula = pynini.union(*env[0])
-                for i in range(1, len(env)):
-                    env_formula = env_formula + pynini.union(*env[i])
-                env_formulas.append(env_formula)
-            return pynini.cdrewrite(string_map, env_formulas[0], env_formulas[1], sigma_star, direction="sim").optimize()
+            env_formulas = list()
+            #   for env in envs:
+            #       env_formula = pynini.accep("0").star
+            #       if env != [""]:
+            #           for j in range(0, len(env)):
+            #               env_formula = env_formula + pynini.accep("0").star + pynini.union(*env[j])
+            #       env_formulas.append(env_formula + pynini.accep("0").star)
+            # for env in envs:
+            #    env_formula = pynini,env[0]
+            for i in range(len(envs)):
+                if envs[i] != [""] and (len(envs[i]) > 1 or in_to_out[0][0] != '' or i > 0):
+                    env_formula = pynini.union(*envs[i][0])
+                    for j in range(1, len(envs[i]) - int(in_to_out[0][0] == '' and i == 0)):
+                        env_formula = (env_formula + pynini.union(*envs[i][j])).optimize()
+                else:
+                    env_formula = pynini.accep("")
+                env_formulas.append(pynini.rmepsilon(env_formula.optimize()))
+
+            if in_to_out[0][0] == '':
+                str_map: pynini.Fst = pynini.string_map(
+                    (e_v, e_v + in_to_out[0][1]) for e_v in envs[0][len(envs[0]) - 1])
+                return pynini.cdrewrite(str_map.ques, env_formulas[0], env_formulas[1], self.sigma_star,
+                                        direction="ltr").optimize()
+
+
+
+            else:
+                str_map: pynini.Fst = pynini.string_map(in_to_out).ques.rmepsilon().optimize()
+
+            return pynini.cdrewrite(str_map.ques, env_formulas[0], env_formulas[1], self.sigma_star,
+                                    direction="ltr").optimize()
 
         def combine_formulas(formulas: list):
             combined_formula = formulas[0]
             for formula in formulas[1:]:
-                combined_formula = pynini.compose(combined_formula, formula).optimize()
-
+                combined_formula = pynini.compose(combined_formula, formula)
+            remove_non_phonemes = pynini.cdrewrite(pynini.cross(pynini.union(*"#0").optimize(), ""), "", "",
+                                                   self.sigma_star)
+            combined_formula = pynini.compose(combined_formula, remove_non_phonemes)
             return combined_formula
 
         def main():
             formulas = list()
-            with open(file_path, "r", encoding="utf8") as sound_change_file:
+
+            with open(file_path, "r", encoding="utf-8") as sound_change_file:
                 for sound_change in sound_change_file:
+                    curr_change = sound_change
                     if sound_change[:3] == "add":
                         new_sounds = sound_change.strip().split(" ")[1].split(",")
                         for sound in new_sounds:
@@ -83,22 +158,36 @@ class SoundChangeSeries(object):
 
                         # generate formula reflecting sound change and add it to list of formulas
                         formulas.append(generate_formula(in_to_out, envs))
+                        make_string(formulas[len(formulas) - 1])
 
                 sound_change_file.close()
-                return combine_formulas(formulas)
+                return formulas
+
         return main()
 
     def apply_sound_changes(self, corpus_file_path):
         """applies loaded sound changes to a corpus"""
 
-        out_words = []
-        with open(corpus_file_path, "r", encoding="utf8") as corpus:
-            for word in ["#" + raw_word.strip() + "#" for raw_word in corpus]:
-                out_word = rewrite.one_top_rewrite(word, self.formula)
-                print(out_word)
-                out_words.append(out_word)
-        corpus.close()
+        def process_word(word):
+            #  filler_string = "0" * self.insertion_count
+            processed_word = word.strip()
+            processed_word = "#" + processed_word + "#"
+            # processed_word = filler_string.join(list(processed_word))
+            return processed_word
 
+        out_words = []
+        with open(corpus_file_path, "r", encoding="utf-8") as corpus:
+            for word in corpus:
+                word = process_word(word)
+                for formul in self.formula:
+                    print(word, end="->")
+
+                    word = rewrite.one_top_rewrite(word, formul)
+
+                print(word.replace("0", ""))
+                print()
+            # out_words.append(out_word)
+        corpus.close()
 
 
 if __name__ == '__main__':

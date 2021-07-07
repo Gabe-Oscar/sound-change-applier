@@ -1,2 +1,10 @@
 add x,ɣ
 [-sonorant]/[+continuant]/[+syllabic]_[+syllabic]
+[0]/[+syllabic,-high,-low,-round]/#_[-syllabic][-syllabic]
+add aː,eː,iː,oː,uː
+[+syllabic][-sonorant,+continuant]/[+long][0]/_[-sonorant]
+[0]/[+syllabic,-high,-low,-round,-long]/[-syllabic]_[-syllabic]
+[-sonorant]/[+voice]/_[-syllabic,+voice]
+[+CORONAL, +continuant, -sonorant]/[+strident]/_
+[+lateral]/[-lateral]/_
+[-sonorant]/[-continuant]/_#

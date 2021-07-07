@@ -2,40 +2,67 @@ from collections import defaultdict, Set
 import csv
 from typing import DefaultDict, Dict, List
 from queue import Queue
+from pynini import *
 
 POS = 1
-NEG = 2
-N_A = 0
+NEG = 0
+POS_SIGN = "+"
+NEG_SIGN = "-"
+DEP_SIGN = "?"
 WORD_BOUNDARY = "#"
+NULL = "0"
+ALL = "*"
+NON_PHONEMES = {NULL, WORD_BOUNDARY}
+PLACE = {"LABIAL", "round", "labiodental", "CORONAL", "anterior", "distributed", "strident", "lateral", "DORSAL",
+         "high", "low", "front", "back"}
+GEN_PLACE = {"LABIAL", "CORONAL", "DORSAL"}
 
 
 class Inventory(object):
     # TODO: Add mechanism to prune non-distinctive features
     def __init__(self):
-        self.sym_to_feats: DefaultDict[str, dict] = defaultdict(dict)
+        self.sym_to_feats: DefaultDict[str, dict] = defaultdict(dict, {'0': {}})
         self.feat_to_syms: DefaultDict[str, set] = defaultdict(set)
         self.neg_feat_to_sym: DefaultDict[str, set] = defaultdict(set)
         self.feats: Set[str] = set()
         self.syms: Set[str] = set()
-
         self.active_sounds: Set[str] = set()
         self.distinctive_features: Set[str] = set()
         self.sym_to_dist_feats: DefaultDict[str, dict] = defaultdict(dict)
+
     def load_features(self, features_file_path):
-        with open(features_file_path) as features:
+        with open(features_file_path, encoding="utf-8") as features:
             self.feats = features.readline().strip().split(',')[1:]
             for f_l in csv.reader(features):
                 feat_to_val = dict()
                 sym = f_l[0]
-                self.syms.add(sym)
-                for i in range(0, len(f_l) - 1):
-                    feat_to_val[self.feats[i]] = bool(int(f_l[i + 1]))
-                    if feat_to_val[self.feats[i]] == POS:
-                        self.feat_to_syms[self.feats[i]].add(sym)
-                    else:
-                        self.neg_feat_to_sym[self.feats[i]].add(sym)
-                self.sym_to_feats[sym] = feat_to_val
-
+                if sym[0] != '_':
+                    self.syms.add(sym)
+                    for i in range(0, len(f_l) - 1):
+                        feat_to_val[self.feats[i]] = bool(int(f_l[i + 1]))
+                        if feat_to_val[self.feats[i]] == POS:
+                            self.feat_to_syms[self.feats[i]].add(sym)
+                        else:
+                            self.neg_feat_to_sym[self.feats[i]].add(sym)
+                    self.sym_to_feats[sym] = feat_to_val
+                else:
+                    t_b_modified = set()
+                    for i in range(1, len(f_l)):
+                        if f_l[i] != '':
+                            t_b_modified.add(i)
+                    for each_sym in self.syms.copy():
+                        sym_variant = each_sym + sym[1:]
+                        self.syms.add(sym_variant)
+                        for i in range(0, len(f_l) - 1):
+                            if i in t_b_modified:
+                                feat_to_val[self.feats[i]] = bool(int(f_l[i+1]))
+                            else:
+                                feat_to_val[self.feats[i]] = self.sym_to_feats[each_sym][self.feats[i]]
+                            if feat_to_val[self.feats[i]] == POS:
+                                self.feat_to_syms[self.feats[i]].add(sym)
+                            else:
+                                self.neg_feat_to_sym[self.feats[i]].add(sym)
+                        self.sym_to_feats[sym_variant] = feat_to_val
     def has_feature(self, symbol, feature):
         return self.sym_to_feats[symbol][feature] == 1
 
@@ -64,12 +91,19 @@ class Inventory(object):
             remove_static_features()
             for active_sound in self.active_sounds:
                 for distinctive_feature in self.distinctive_features:
-                    self.sym_to_dist_feats[active_sound][distinctive_feature] = self.sym_to_feats[active_sound][distinctive_feature]
+                    if distinctive_feature in self.sym_to_feats[active_sound].keys():
+                        self.sym_to_dist_feats[active_sound][distinctive_feature] = self.sym_to_feats[active_sound][
+                            distinctive_feature]
 
+    def get_place(self, symbol):
+        return {feature: self.sym_to_feats[symbol][feature] for feature in PLACE}
+
+    def get_gen_place(self, symbol):
+        return {feature: self.sym_to_feats[symbol][feature] for feature in GEN_PLACE}
 
     def generate_env(self, environment):
-        if environment == ["*"]:
-            return self.active_sounds.union(WORD_BOUNDARY)
+        if environment == [""]:
+            return ""
         elif environment == ["#"]:
             return "#"
         else:
@@ -78,30 +112,37 @@ class Inventory(object):
     def select_active_sounds_with_feature(self, feature: str):
         return self.select_active_sounds([feature])
 
-
-
     def select_active_sounds(self, feature_list: List[str]):
-        if feature_list == ["*"]:
+        if feature_list == [ALL]:
             return self.active_sounds
+        elif feature_list == [NULL]:
+            return [""]
         sound_pool: set = self.active_sounds.copy()
 
         for feature in feature_list:
-            if isinstance(feature_list, list):
-                sign = feature[0] == "+"
-                feature = feature[1:]
-            else:
-                sign = feature_list[feature]
-            if sign:
-                sound_pool = sound_pool.intersection(self.feat_to_syms[feature])
-            else:
-                sound_pool = sound_pool.intersection(self.neg_feat_to_sym[feature])
+            if len(feature.split("@")) == 1:
+                if isinstance(feature_list, list):
 
-     #       for sound in sound_pool:
-       #         if self.sym_to_feats[sound][content] == sign:
-      #              new_sound_pool.add(sound)
-       #     sound_pool = new_sound_pool
+                    if feature[0] == POS_SIGN:
+                        sign = True
+                    elif feature[0] == NEG_SIGN:
+                        sign = False
+                    else:
+                        raise ValueError("Value of " + feature + "not indicated")
+
+                    feature = feature[1:]
+                else:
+                    sign = feature_list[feature]
+                if sign:
+                    sound_pool = sound_pool.intersection(self.feat_to_syms[feature])
+                else:
+                    sound_pool = sound_pool.intersection(self.neg_feat_to_sym[feature])
+
+        #       for sound in sound_pool:
+        #         if self.sym_to_feats[sound][content] == sign:
+        #              new_sound_pool.add(sound)
+        #     sound_pool = new_sound_pool
         return sound_pool
-
 
     def add_active_sound(self, new_sound):
         if new_sound in self.syms:
@@ -113,6 +154,8 @@ class Inventory(object):
             raise ValueError("Symbol not recognized")
 
     def get_variant(self, in_sound, changes):
+        if changes[0] == NULL:
+            return ''
         out_sound_features = self.sym_to_dist_feats[in_sound].copy()
         contents = set()
         eigenschaften = dict()
@@ -147,7 +190,7 @@ class Inventory(object):
                 for j in range(len(curr_try)):
                     new_features = curr_features.copy()
                     new_features.pop(curr_try[j])
-                    new_try = curr_try[0:j] + curr_try[j+1:]
+                    new_try = curr_try[0:j] + curr_try[j + 1:]
                     sound_pool = self.select_active_sounds(new_features)
                     if len(sound_pool) == 0:
                         to_try.put(new_try)
@@ -160,4 +203,11 @@ class Inventory(object):
             raise ValueError("Criteria doesn't apply to any active sounds; "
                              "add new active sounds before applying this rule")
 
-
+    def feature_dict_to_string(self, feature_dict: dict):
+        string_list = []
+        for feature in feature_dict.keys():
+            if feature[feature]:
+                string_list.append("+" + feature)
+            else:
+                string_list.append("-" + feature)
+        return str(string_list)
