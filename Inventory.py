@@ -10,21 +10,20 @@ NEG = -1
 POS_SIGN = "+"
 NEG_SIGN = "-"
 
-WORD_BOUNDARY = "#"
+BOUND = "#"
 NULL = "0"
 ALL = "*"
-NON_PHONEMES = {NULL, WORD_BOUNDARY}
+NON_PHONEMES = {NULL, BOUND}
 
 
 class Inventory(object):
-    # TODO: Add mechanism to prune non-distinctive features
     def __init__(self):
         self.sym_to_feats: DefaultDict[str, set] = defaultdict(set, {NULL: {}})  # symbol of sound to features of sound
         self.feat_to_syms: DefaultDict[str, set] = defaultdict(set)  # feature to symbols of sounds with the feature
         self.feature_names: set[str] = set()  # features
         self.syms: set[str] = set()  # symbols
         self.active_sounds: set[str] = set()  # sounds currently being used
-        self.distinctive_features: Set[str] = set()  # features that currently distinguish sounds
+        self.distinctive_features: Set[str] = set()  # features that  distinguish active sounds
         self.sym_to_dist_feats: DefaultDict[str, set] = defaultdict(
             set)  # symbol of sound to distinctive features of sound
 
@@ -109,8 +108,8 @@ class Inventory(object):
     def generate_env(self, environment):
         if environment == [""]:
             return ""
-        elif environment == ["#"]:
-            return "#"
+        elif environment == [BOUND]:
+            return BOUND
         else:
             return self.select_active_sounds(environment)
 
@@ -141,8 +140,6 @@ class Inventory(object):
         if changes[0] == NULL:
             return ''
         out_sound_features = self.sym_to_dist_feats[in_sound].copy()
-        contents = set()
-        properties = dict()
 
         for feat_change in changes:
             content = feat_change[1:]

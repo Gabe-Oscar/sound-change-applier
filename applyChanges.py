@@ -6,13 +6,15 @@ import pynini
 import pynini.lib.rewrite as rewrite
 import cProfile
 
+BOUND = "#"
+
 class SoundChangeSeries(object):
     def __init__(self, changes_path, inventory):
         self.inventory = inventory
         self.insertion_count = 0
         pynini.default_token_type("utf-8")
 
-        self.sigma_star = pynini.closure(pynini.union(*self.inventory.syms.union("#")).optimize()).optimize()
+        self.sigma_star = pynini.closure(pynini.union(*self.inventory.syms.union(BOUND)).optimize()).optimize()
 
         self.formula = self.load_sound_changes(changes_path)
 
@@ -53,8 +55,8 @@ class SoundChangeSeries(object):
             for i in range(len(env_texts)):
                 if env_texts[i] == "":
                     env_texts[i] = "[]"
-                elif env_texts[i] == "#":
-                    env_texts[i] = "[#]"
+                elif env_texts[i] == BOUND:
+                    env_texts[i] = "[" + BOUND + "]"
             processed_envs = [process_feature_stuff(env) for env in env_texts]
             return [[self.inventory.generate_env(env_string) for env_string in env] for env in processed_envs]
 
@@ -118,14 +120,14 @@ class SoundChangeSeries(object):
 
         def process_word(word):
             processed_word = word.strip()
-            processed_word = "#" + processed_word + "#"
+            processed_word = BOUND + processed_word + BOUND
             return processed_word
 
         with open(corpus_file_path, "r", encoding="utf-8") as corpus:
             for word in corpus:
                 word = process_word(word)
                 word = rewrite.one_top_rewrite(word, self.formula)
-                print(word.replace("#",""))
+                print(word.replace(BOUND,""))
         corpus.close()
 
 
