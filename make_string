@@ -1,0 +1,32 @@
+
+def make_string(formula):
+    processed_formula = [[character for character in line.split("\t")] for line in formula.__str__().split("\n")]
+    in_chars = []
+    out_chars = []
+    something = []
+    something_else = []
+    for line in processed_formula:
+        if len(line) > 0:
+            something.append((line[0]))
+        else:
+            something.append('')
+            something_else.append('')
+            in_chars.append('')
+            out_chars.append('')
+        if len(line) > 1:
+            something_else.append((line[1]))
+        else:
+            something_else.append('')
+            in_chars.append('')
+            out_chars.append('')
+        if len(line) > 2:
+            in_chars.append(chr(int(line[2])))
+        # in_chars.append(line[2])
+        else:
+            in_chars.append('')
+            out_chars.append('')
+        if len(line) > 3:
+            out_chars.append(chr(int(line[3])))
+        else:
+            out_chars.append('')
+    return numpy.array([[s, se, i, o] for s, se, i, o in zip(something, something_else, in_chars, out_chars)])

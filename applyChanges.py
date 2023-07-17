@@ -2,46 +2,9 @@ from typing import Tuple, List, Set
 import re
 from Inventory import Inventory
 from Inventory import NULL
-import numpy
 import pynini
 import pynini.lib.rewrite as rewrite
-import pynini.lib.pynutil as pynutil
-import pywrapfst
-import pynini.lib.edit_transducer as edit_transducer
-
-
-def make_string(formula):
-    processed_formula = [[character for character in line.split("\t")] for line in formula.__str__().split("\n")]
-    in_chars = []
-    out_chars = []
-    something = []
-    something_else = []
-    for line in processed_formula:
-        if len(line) > 0:
-            something.append((line[0]))
-        else:
-            something.append('')
-            something_else.append('')
-            in_chars.append('')
-            out_chars.append('')
-        if len(line) > 1:
-            something_else.append((line[1]))
-        else:
-            something_else.append('')
-            in_chars.append('')
-            out_chars.append('')
-        if len(line) > 2:
-            in_chars.append(chr(int(line[2])))
-        # in_chars.append(line[2])
-        else:
-            in_chars.append('')
-            out_chars.append('')
-        if len(line) > 3:
-            out_chars.append(chr(int(line[3])))
-        else:
-            out_chars.append('')
-    return numpy.array([[s, se, i, o] for s, se, i, o in zip(something, something_else, in_chars, out_chars)])
-
+import cProfile
 
 class SoundChangeSeries(object):
     def __init__(self, changes_path, inventory):
@@ -49,7 +12,7 @@ class SoundChangeSeries(object):
         self.insertion_count = 0
         pynini.default_token_type("utf-8")
 
-        self.sigma_star = pynini.closure(pynini.union(*self.inventory.syms.union("#"))).optimize()
+        self.sigma_star = pynini.closure(pynini.union(*self.inventory.syms.union("#")).optimize()).optimize()
 
         self.formula = self.load_sound_changes(changes_path)
 
@@ -97,17 +60,9 @@ class SoundChangeSeries(object):
 
         def generate_formula(in_to_out: List[Tuple[str]], envs: Tuple[Set[str]]):
             env_formulas = list()
-            #   for env in envs:
-            #       env_formula = pynini.accep("0").star
-            #       if env != [""]:
-            #           for j in range(0, len(env)):
-            #               env_formula = env_formula + pynini.accep("0").star + pynini.union(*env[j])
-            #       env_formulas.append(env_formula + pynini.accep("0").star)
-            # for env in envs:
-            #    env_formula = pynini,env[0]
             for i in range(len(envs)):
                 if envs[i] != [""] and (len(envs[i]) > 1 or in_to_out[0][0] != '' or i > 0):
-                    env_formula = pynini.union(*envs[i][0])
+                    env_formula = pynini.union(*envs[i][0]).optimize()
                     for j in range(1, len(envs[i]) - int(in_to_out[0][0] == '' and i == 0)):
                         env_formula = (env_formula + pynini.union(*envs[i][j])).optimize()
                 else:
@@ -119,9 +74,6 @@ class SoundChangeSeries(object):
                     (e_v, e_v + in_to_out[0][1]) for e_v in envs[0][len(envs[0]) - 1])
                 return pynini.cdrewrite(str_map.ques, env_formulas[0], env_formulas[1], self.sigma_star,
                                         direction="ltr").optimize()
-
-
-
             else:
                 str_map: pynini.Fst = pynini.string_map(in_to_out).ques.rmepsilon().optimize()
 
@@ -131,10 +83,10 @@ class SoundChangeSeries(object):
         def combine_formulas(formulas: list):
             combined_formula = formulas[0]
             for formula in formulas[1:]:
-                combined_formula = pynini.compose(combined_formula, formula)
-            remove_non_phonemes = pynini.cdrewrite(pynini.cross(pynini.union(*"#0").optimize(), ""), "", "",
-                                                   self.sigma_star)
-            combined_formula = pynini.compose(combined_formula, remove_non_phonemes)
+                combined_formula = pynini.compose(combined_formula, formula).optimize()
+            # remove_non_phonemes = pynini.cdrewrite(pynini.cross(pynini.union(*"#0").optimize(), ""), "", "",
+            #                                       self.sigma_star)
+            # combined_formula = pynini.compose(combined_formula, combined_formula)
             return combined_formula
 
         def main():
@@ -143,6 +95,7 @@ class SoundChangeSeries(object):
             with open(file_path, "r", encoding="utf-8") as sound_change_file:
                 for sound_change in sound_change_file:
                     curr_change = sound_change
+                    # if the "sound change" consists of adding new potential phonemes to the language
                     if sound_change[:3] == "add":
                         new_sounds = sound_change.strip().split(" ")[1].split(",")
                         for sound in new_sounds:
@@ -158,10 +111,10 @@ class SoundChangeSeries(object):
 
                         # generate formula reflecting sound change and add it to list of formulas
                         formulas.append(generate_formula(in_to_out, envs))
-                        make_string(formulas[len(formulas) - 1])
+                    #   make_string(formulas[len(formulas) - 1])
 
                 sound_change_file.close()
-                return formulas
+                return combine_formulas(formulas)
 
         return main()
 
@@ -175,25 +128,26 @@ class SoundChangeSeries(object):
             # processed_word = filler_string.join(list(processed_word))
             return processed_word
 
-        out_words = []
         with open(corpus_file_path, "r", encoding="utf-8") as corpus:
             for word in corpus:
                 word = process_word(word)
-                for formul in self.formula:
-                    print(word, end="->")
+                word = rewrite.one_top_rewrite(word, self.formula)
 
-                    word = rewrite.one_top_rewrite(word, formul)
-
-                print(word.replace("0", ""))
-                print()
-            # out_words.append(out_word)
+                print(word.replace("0", "").replace("#",""))
         corpus.close()
 
 
+
 if __name__ == '__main__':
+    profiler = cProfile.Profile()
+    profiler.enable()
+
     inventory = Inventory()
     inventory.load_features("distinctive features.csv")
     inventory.load_active_sounds("active sounds")
     inventory.generate_distinctive_features()
     series = SoundChangeSeries('changes', inventory)
     series.apply_sound_changes('corpus')
+
+    profiler.disable()
+    profiler.print_stats(sort='time')
