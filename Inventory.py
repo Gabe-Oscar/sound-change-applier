@@ -139,13 +139,6 @@ class Inventory(object):
     def get_variant(self, in_sound, changes):
         if changes[0] == NULL:
             return ''
-        out_sound_features = self.sym_to_dist_feats[in_sound].copy()
-
-        for feat_change in changes:
-            content = feat_change[1:]
-            op_sign = NEG_SIGN if feat_change[0] == POS_SIGN else POS_SIGN
-            out_sound_features.discard(op_sign + content)
-            out_sound_features.add(feat_change)
 
         sound_pool = self.select_active_sounds(set(changes))
         best_choice = sound_pool.pop()
