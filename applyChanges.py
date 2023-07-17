@@ -84,9 +84,6 @@ class SoundChangeSeries(object):
             combined_formula = formulas[0]
             for formula in formulas[1:]:
                 combined_formula = pynini.compose(combined_formula, formula).optimize()
-            # remove_non_phonemes = pynini.cdrewrite(pynini.cross(pynini.union(*"#0").optimize(), ""), "", "",
-            #                                       self.sigma_star)
-            # combined_formula = pynini.compose(combined_formula, combined_formula)
             return combined_formula
 
         def main():
@@ -94,7 +91,6 @@ class SoundChangeSeries(object):
 
             with open(file_path, "r", encoding="utf-8") as sound_change_file:
                 for sound_change in sound_change_file:
-                    curr_change = sound_change
                     # if the "sound change" consists of adding new potential phonemes to the language
                     if sound_change[:3] == "add":
                         new_sounds = sound_change.strip().split(" ")[1].split(",")
@@ -111,7 +107,6 @@ class SoundChangeSeries(object):
 
                         # generate formula reflecting sound change and add it to list of formulas
                         formulas.append(generate_formula(in_to_out, envs))
-                    #   make_string(formulas[len(formulas) - 1])
 
                 sound_change_file.close()
                 return combine_formulas(formulas)
@@ -122,18 +117,15 @@ class SoundChangeSeries(object):
         """applies loaded sound changes to a corpus"""
 
         def process_word(word):
-            #  filler_string = "0" * self.insertion_count
             processed_word = word.strip()
             processed_word = "#" + processed_word + "#"
-            # processed_word = filler_string.join(list(processed_word))
             return processed_word
 
         with open(corpus_file_path, "r", encoding="utf-8") as corpus:
             for word in corpus:
                 word = process_word(word)
                 word = rewrite.one_top_rewrite(word, self.formula)
-
-                print(word.replace("0", "").replace("#",""))
+                print(word.replace("#",""))
         corpus.close()
 
 

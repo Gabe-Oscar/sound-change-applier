@@ -10,14 +10,10 @@ NEG = -1
 POS_SIGN = "+"
 NEG_SIGN = "-"
 
-DEP_SIGN = "?"
 WORD_BOUNDARY = "#"
 NULL = "0"
 ALL = "*"
 NON_PHONEMES = {NULL, WORD_BOUNDARY}
-PLACE = {"LABIAL", "round", "labiodental", "CORONAL", "anterior", "distributed", "strident", "lateral", "DORSAL",
-         "high", "low", "front", "back"}
-GEN_PLACE = {"LABIAL", "CORONAL", "DORSAL"}
 
 
 class Inventory(object):
@@ -50,12 +46,9 @@ class Inventory(object):
                 feature_values = [read_value(feature_number) for feature_number in f_l[
                                                                                    1:]]  # the values of each feature for the given sound (i.e. whether the sound has that feature)
                 if sym[0] != '_':  # if the symbol isn't a modifier
-                    # feat_to_val = dict()
-                    # feat_to_val = list()
                     feats = set()
                     self.syms.add(sym)
                     for feature_name, feature_value in zip(feat_names_ordered_list, feature_values):
-                        # feat_to_val[feature_name] = feature_value;
                         feature = (POS_SIGN if feature_value == POS else NEG_SIGN) + feature_name
                         feats.add(feature)
                         self.feat_to_syms[feature].add(sym)
@@ -113,12 +106,6 @@ class Inventory(object):
                     elif neg_distinctive_feature in self.sym_to_feats[active_sound]:
                         self.sym_to_dist_feats[active_sound].add(neg_distinctive_feature)
 
-    def get_place(self, symbol):
-        return {feature: self.sym_to_feats[symbol][feature] for feature in PLACE}
-
-    def get_gen_place(self, symbol):
-        return {feature: self.sym_to_feats[symbol][feature] for feature in GEN_PLACE}
-
     def generate_env(self, environment):
         if environment == [""]:
             return ""
@@ -138,20 +125,7 @@ class Inventory(object):
         sound_pool: set = self.active_sounds.copy()
 
         for feature in feature_list:
-            # if len(feature.split("@")) == 1:
             sound_pool = sound_pool.intersection(self.feat_to_syms[feature])
-
-            # else:
-            #     sign = feature_list[feature]
-            # if sign:
-            #    sound_pool = sound_pool.intersection(self.feat_to_syms[feature])
-            # else:
-            #    sound_pool = sound_pool.intersection(self.neg_feat_to_syms[feature])
-
-        #       for sound in sound_pool:
-        #         if self.sym_to_feats[sound][content] == sign:
-        #              new_sound_pool.add(sound)
-        #     sound_pool = new_sound_pool
         return sound_pool
 
     def add_active_sound(self, new_sound):
@@ -189,11 +163,3 @@ class Inventory(object):
                 best_choice = pot_choice
         return best_choice
 
-    def feature_dict_to_string(self, feature_dict: dict):
-        string_list = []
-        for feature in feature_dict.keys():
-            if feature[feature]:
-                string_list.append("+" + feature)
-            else:
-                string_list.append("-" + feature)
-        return str(string_list)
