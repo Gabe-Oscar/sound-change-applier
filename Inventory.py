@@ -23,9 +23,6 @@ class Inventory(object):
         self.feature_names: set[str] = set()  # features
         self.syms: set[str] = set()  # symbols
         self.active_sounds: set[str] = set()  # sounds currently being used
-        self.distinctive_features: Set[str] = set()  # features that  distinguish active sounds
-        self.sym_to_dist_feats: DefaultDict[str, set] = defaultdict(
-            set)  # symbol of sound to distinctive features of sound
 
     def load_features(self, features_file_path):
         def read_value(value: str) -> int:
@@ -74,37 +71,6 @@ class Inventory(object):
             for sound in sounds_file:
                 self.active_sounds.add(sound.strip())
 
-    def generate_distinctive_features(self):
-        # gets rid of features that have the same value for every active sound
-        def remove_static_features():
-            active_feature_sets = [self.sym_to_feats[active_sound] for active_sound in self.active_sounds]
-            static_features = set([feature[1:] for feature in set.intersection(*active_feature_sets)])
-            self.distinctive_features = set.difference(self.distinctive_features, static_features)
-            # for feature in self.distinctive_features.copy():
-            #    for sound in
-            #    value_set = set([self.sym_to_feats[sound][feature] for sound in self.active_sounds])
-            #   if len(value_set) <= 1:
-            #        self.distinctive_features.remove(feature)
-
-        # removes feature A if:
-        #   - there is a feature B with which feature A always occurs
-        #   - feature B does not always occur with feature A
-        #   -
-
-        if len(self.active_sounds) == 0:
-            raise ValueError("Must load active sounds before running this method")
-        else:
-            self.distinctive_features = self.feature_names.copy()
-            remove_static_features()
-            for distinctive_feature in self.distinctive_features:
-                pos_distinctive_feature = POS_SIGN + distinctive_feature
-                neg_distinctive_feature = NEG_SIGN + distinctive_feature
-                for active_sound in self.active_sounds:
-                    if pos_distinctive_feature in self.sym_to_feats[active_sound]:
-                        self.sym_to_dist_feats[active_sound].add(pos_distinctive_feature)
-                    elif neg_distinctive_feature in self.sym_to_feats[active_sound]:
-                        self.sym_to_dist_feats[active_sound].add(neg_distinctive_feature)
-
     def generate_env(self, environment):
         if environment == [""]:
             return ""
@@ -130,8 +96,6 @@ class Inventory(object):
     def add_active_sound(self, new_sound):
         if new_sound in self.syms:
             self.active_sounds.add(new_sound)
-            self.distinctive_features = self.feature_names
-            self.generate_distinctive_features()
 
         else:
             raise ValueError("Symbol not recognized")
@@ -143,11 +107,11 @@ class Inventory(object):
         sound_pool = self.select_active_sounds(set(changes))
         best_choice = sound_pool.pop()
         best_intersection_size = len(
-            set.intersection(self.sym_to_dist_feats[in_sound], self.sym_to_dist_feats[best_choice]))
+            set.intersection(self.sym_to_feats[in_sound], self.sym_to_feats[best_choice]))
         while sound_pool:
             pot_choice = sound_pool.pop()
             intersection_size = len(
-                set.intersection(self.sym_to_dist_feats[in_sound], self.sym_to_dist_feats[pot_choice]))
+                set.intersection(self.sym_to_feats[in_sound], self.sym_to_feats[pot_choice]))
             if intersection_size > best_intersection_size:
                 best_intersection_size = intersection_size
                 best_choice = pot_choice

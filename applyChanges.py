@@ -139,7 +139,6 @@ if __name__ == '__main__':
     inventory = Inventory()
     inventory.load_features("distinctive features.csv")
     inventory.load_active_sounds("active sounds")
-    inventory.generate_distinctive_features()
     series = SoundChangeSeries('changes', inventory)
     series.apply_sound_changes('corpus')
 
