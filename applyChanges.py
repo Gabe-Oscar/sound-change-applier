@@ -8,11 +8,12 @@ import cProfile
 
 BOUND = "#"
 
+
 class SoundChangeSeries(object):
     def __init__(self, changes_path, inventory):
         self.inventory = inventory
         self.insertion_count = 0
-        self.formulas=[]
+        self.formulas = []
 
         self.changes = self.load_sound_changes(changes_path)
 
@@ -61,7 +62,6 @@ class SoundChangeSeries(object):
 
         def generate_formula(in_to_out: List[Tuple[str]], envs: Tuple[List[str]]):
 
-
             if in_to_out[0][0] == "":
                 env_formulas = ["(", "("]
             else:
@@ -74,18 +74,16 @@ class SoundChangeSeries(object):
                 else:
                     env_formulas[i] = ""
 
-
-
-            #env_formulas = ["[" + ''.join(str(env) for env in envs[0]) + "]", "[" + ''.join(str(env) for env in (envs[1])) + "]"]
+            # env_formulas = ["[" + ''.join(str(env) for env in envs[0]) + "]", "[" + ''.join(str(env) for env in (envs[1])) + "]"]
 
             formulas = list()
             if in_to_out[0][0] == "":
                 for i_t_o in in_to_out:
-                    self.formulas.append((env_formulas[0] + env_formulas[1], r'\1' + i_t_o[1] + r'\2'))
+                    self.formulas.append([re.compile(env_formulas[0] + env_formulas[1]), r'\1' + i_t_o[1] + r'\2'])
             else:
                 for i_t_o in in_to_out:
-                   self.formulas.append((env_formulas[0]+"(" + i_t_o[0] + "{1})"+env_formulas[1],i_t_o[1]))
-
+                    self.formulas.append(
+                        [re.compile(env_formulas[0] + "(" + i_t_o[0] + "{1})" + env_formulas[1]), i_t_o[1]])
 
         def main():
             formulas = list()
@@ -110,7 +108,7 @@ class SoundChangeSeries(object):
                         generate_formula(in_to_out, envs)
 
                 sound_change_file.close()
-               # return formula
+            # return formula
 
         return main()
 
@@ -126,11 +124,10 @@ class SoundChangeSeries(object):
             for word in corpus:
                 word = process_word(word)
                 for formula in self.formulas:
-                    while re.search(formula[0], word):
-                        word = re.sub(formula[0], formula[1], word, count=1)
-                print(word.replace(BOUND,""))
+                    while formula[0].search(word):
+                        word = formula[0].sub(formula[1], word, count=1)
+                print(word.replace(BOUND, ""))
         corpus.close()
-
 
 
 if __name__ == '__main__':
