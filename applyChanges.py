@@ -60,7 +60,7 @@ class SoundChangeSeries(object):
             processed_envs = [process_feature_stuff(env) for env in env_texts]
             return [[self.inventory.generate_env(env_string) for env_string in env] for env in processed_envs]
 
-        def generate_formula(in_to_out: List[Tuple[str]], envs: Tuple[List[str]]):
+        def generate_formula(in_to_out: List[Tuple[str]], envs: tuple()):
 
             if in_to_out[0][0] == "":
                 env_formulas = ["(", "("]
@@ -69,12 +69,15 @@ class SoundChangeSeries(object):
             for i in range(len(envs)):
                 if envs[i] != ['']:
                     for pos in envs[i]:
-                        env_formulas[i] = env_formulas[i] + ('[' + ''.join(sound for sound in pos) + ']')
+                        if pos == '#':
+                            to_append = '^' if i == 0 else '$'
+                        else:
+                            to_append = '[' + ''.join(sound for sound in pos) + ']'
+                        env_formulas[i] = env_formulas[i] + to_append
                     env_formulas[i] = env_formulas[i] + ")"
                 else:
                     env_formulas[i] = ""
 
-            # env_formulas = ["[" + ''.join(str(env) for env in envs[0]) + "]", "[" + ''.join(str(env) for env in (envs[1])) + "]"]
 
             formulas = list()
             if in_to_out[0][0] == "":
@@ -115,18 +118,19 @@ class SoundChangeSeries(object):
     def apply_sound_changes(self, corpus_file_path):
         """applies loaded sound changes to a corpus"""
 
-        def process_word(word):
-            processed_word = word.strip()
-            processed_word = BOUND + processed_word + BOUND
-            return processed_word
+        #def process_word(word):
+        #    processed_word = word.strip()
+            #processed_word = BOUND + processed_word + BOUND
+        #    return processed_word
 
         with open(corpus_file_path, "r", encoding="utf-8") as corpus:
             for word in corpus:
-                word = process_word(word)
+                #word = process_word(word)
+                word = word.strip()
                 for formula in self.formulas:
                     while formula[0].search(word):
                         word = formula[0].sub(formula[1], word, count=1)
-                print(word.replace(BOUND, ""))
+                print(word)
         corpus.close()
 
 

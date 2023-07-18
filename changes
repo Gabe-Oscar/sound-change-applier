@@ -46,3 +46,4 @@ add aː,eː,iː,oː,uː
 [+syllabic]/[0]/[+syllabic][-sonorant]_[-sonorant][+syllabic]
 [-sonorant]/[-voice]/[-syllabic,-voice]_
 [-sonorant]/[+voice]/[-syllabic,+voice]_
+[+syllabic]/[+long]/_[-syllabic, +voice][#]
