@@ -2,14 +2,47 @@ add x,ɣ
 [-sonorant]/[+continuant]/[+syllabic]_[+syllabic]
 [0]/[+syllabic,-high,-low,-round]/#_[-syllabic][-syllabic]
 add pʰ,tʰ,kʰ
-add aː,eː,iː,oː,uː
 [-sonorant,-continuant]/[+aspirated]/#_[+sonorant]
 [-sonorant,-continuant]/[+aspirated]/[+sonorant]_[+sonorant]
+add aː,eː,iː,oː,uː
 [+syllabic][-sonorant,+continuant]/[+long][0]/_[-sonorant]
-[0]/[+syllabic,-high,-low,-round,-long]/[-syllabic]_[-syllabic]
 [-sonorant]/[+voice]/_[-syllabic,+voice]
+[0]/[+syllabic,-high,-low,-round,-long]/[-syllabic]_[-syllabic]
 [+CORONAL, +continuant, -sonorant]/[+strident]/_
 [+lateral]/[-lateral]/_
 [-sonorant]/[-continuant]/_#
+[+syllabic]/[0]/[+syllabic][-sonorant]_[-sonorant][+syllabic]
+[-sonorant]/[-voice]/[-syllabic,-voice]_
+[-sonorant]/[+voice]/[-syllabic,+voice]_
+add x,ɣ
+[-sonorant]/[+continuant]/[+syllabic]_[+syllabic]
+[0]/[+syllabic,-high,-low,-round]/#_[-syllabic][-syllabic]
+add pʰ,tʰ,kʰ
+[-sonorant,-continuant]/[+aspirated]/#_[+sonorant]
+[-sonorant,-continuant]/[+aspirated]/[+sonorant]_[+sonorant]
+add aː,eː,iː,oː,uː
+[+syllabic][-sonorant,+continuant]/[+long][0]/_[-sonorant]
+[-sonorant]/[+voice]/_[-syllabic,+voice]
+[0]/[+syllabic,-high,-low,-round,-long]/[-syllabic]_[-syllabic]
+[+CORONAL, +continuant, -sonorant]/[+strident]/_
+[+lateral]/[-lateral]/_
+[-sonorant]/[-continuant]/_#
+[+syllabic]/[0]/[+syllabic][-sonorant]_[-sonorant][+syllabic]
+[-sonorant]/[-voice]/[-syllabic,-voice]_
+[-sonorant]/[+voice]/[-syllabic,+voice]_
+add x,ɣ
+[-sonorant]/[+continuant]/[+syllabic]_[+syllabic]
+[0]/[+syllabic,-high,-low,-round]/#_[-syllabic][-syllabic]
+add pʰ,tʰ,kʰ
+[-sonorant,-continuant]/[+aspirated]/#_[+sonorant]
+[-sonorant,-continuant]/[+aspirated]/[+sonorant]_[+sonorant]
+add aː,eː,iː,oː,uː
+[+syllabic][-sonorant,+continuant]/[+long][0]/_[-sonorant]
+[-sonorant]/[+voice]/_[-syllabic,+voice]
+[0]/[+syllabic,-high,-low,-round,-long]/[-syllabic]_[-syllabic]
+[+CORONAL, +continuant, -sonorant]/[+strident]/_
+[+lateral]/[-lateral]/_
+[-sonorant]/[-continuant]/_#
+[+syllabic]/[0]/[+syllabic][-sonorant]_[-sonorant][+syllabic]
 [-sonorant]/[-voice]/[-syllabic,-voice]_
 [-sonorant]/[+voice]/[-syllabic,+voice]_
