@@ -118,14 +118,8 @@ class SoundChangeSeries(object):
     def apply_sound_changes(self, corpus_file_path):
         """applies loaded sound changes to a corpus"""
 
-        #def process_word(word):
-        #    processed_word = word.strip()
-            #processed_word = BOUND + processed_word + BOUND
-        #    return processed_word
-
         with open(corpus_file_path, "r", encoding="utf-8") as corpus:
             for word in corpus:
-                #word = process_word(word)
                 word = word.strip()
                 for formula in self.formulas:
                     while formula[0].search(word):
